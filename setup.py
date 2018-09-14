@@ -26,11 +26,11 @@ Operating System :: POSIX :: Linux
 
 NAME = 'mmcg'
 AUTHOR = 'Scott Collis, Zachary Sherman, Robert Jackson'
-MAINTAINER = "Data Informatics and Geophysical Retrievals (DIGR)"
-MAINTAINER_EMAIL = "zsherman@anl.gov"
+MAINTAINER = 'Data Informatics and Geophysical Retrievals (DIGR)'
+MAINTAINER_EMAIL = 'zsherman@anl.gov'
 DESCRIPTION = DOCLINES[0]
 LONG_DESCRIPTION = "\n".join(DOCLINES[2:])
-URL = "https://github.com/ANL-DIGR/mmcg"
+URL = 'https://github.com/ANL-DIGR/mmcg'
 LICENSE = 'BSD'
 CLASSIFIERS = filter(None, CLASSIFIERS.split('\n'))
 MAJOR = 0
@@ -66,7 +66,7 @@ def git_version():
     return GIT_REVISION
 
 
-def write_version_py(filename='pyart/version.py'):
+def write_version_py(filename='mmcg/version.py'):
     cnt = """
 # THIS FILE IS GENERATED FROM PYART SETUP.PY
 short_version = '%(version)s'
@@ -79,14 +79,14 @@ if not release:
     version = full_version
 """
     # Adding the git rev number needs to be done inside write_version_py(),
-    # otherwise the import of pyart.version messes up the build under Python 3.
+    # otherwise the import of mmcg.version messes up the build under Python 3.
     FULLVERSION = VERSION
     if os.path.exists('.git'):
         GIT_REVISION = git_version()
     elif os.path.exists('mmcg/version.py'):
         # must be a source distribution, use existing version file
         try:
-            from pyart.version import git_revision as GIT_REVISION
+            from mmcg.version import git_revision as GIT_REVISION
         except ImportError:
             raise ImportError("Unable to import git_revision. Try removing "
                               "mmcg/version.py and the build directory "
