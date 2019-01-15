@@ -1,13 +1,13 @@
-""" Module that takes a radar object, processed using the package CMAC 2.0
-a maps """
+""" Module that takes a radar object, processed using the package CMAC 2.0,
+a maps the data to a Cartesian grid. """
 
 import numpy as np
 import pyart
 
 from .config import get_grid_values
 
-def mmcg(radar, grid_shape, grid_limits, config=None,
-         verbose=True, **kwargs):
+def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
+         config=None, **kwargs):
     """
     Mapped Moments to a Cartesian Grid
 
@@ -24,6 +24,10 @@ def mmcg(radar, grid_shape, grid_limits, config=None,
 
     Other Parameters
     ----------------
+    z_linear_interp : bool
+        Whether or not to map the reflectivity in linear or logarithmic
+        units. Default is True, reflectivity is map in linear units and
+        then converted to logarithmic units after mapping has taken place.
     config : str
         A string pointing to dictionaries containing values for gridding.
         These dictionaries tend to have value for grid_shape and grid_limits,
@@ -31,8 +35,6 @@ def mmcg(radar, grid_shape, grid_limits, config=None,
         inputing values that the user found to be best for interpolation
         and artifact removal, and call these values again from a named
         configuration.
-    verbose : bool
-        If True, this will display more statistics.
     kwargs : **kwargs
         Parameters found in map_gates_to_grid. For more detail:
         <https://github.com/ARM-DOE/pyart/blob/master/pyart/map/gates_to_
@@ -44,34 +46,32 @@ def mmcg(radar, grid_shape, grid_limits, config=None,
         Radar object with new CMAC added fields.
 
     """
+    # Replace the raw reflectivity field with a linear reflectivity field
+    # that will be used in mapping.
+    if z_linear_interp:
+        z_lin = 10.0**(radar.fields['reflectivity']['data']/10.0)
+        radar.add_field('reflectivity', z_lin, replace_existing=True)
+
     # Retrieve values from the configuration file.
     if config is not None:
         grid_config = get_grid_values(config)
 
-        # Define gridding parameters based on configuration.
-        grid_origin = grid_config['grid_origin']
-        grid_origin_alt = grid_config['grid_origin_alt']
-        grid_projection = grid_config['grid_projection']
-        fields = grid_config['fields']
-        map_roi = grid_config['map_roi']
-        weighting_function = grid_config['weighting_function']
-        toa = grid_config['toa']
-        roi_func = grid_config['roi_func']
-        constant_roi = grid_config['constant_roi']
-        z_factor = grid_config['z_factor']
-        xy_factor = grid_config['xy_factor']
-        min_radius = grid_config['min_radius']
-        h_factor = grid_config['h_factor']
-        nb = grid_config['nb']
-        bsp = grid_config['bsp']
-
         grid = pyart.map.grid_from_radars(
-            radar, grid_shape, grid_limits, fields, map_roi,
-            weighting_function, toa, roi_func, constant_roi, z_factor,
-            xy_factor, min_radius, h_factor, nb, bsp)
+            radar, grid_shape, grid_limits, **grid_config)
 
     else:
         grid = pyart.map.grid_from_radars(
             radar, grid_shape, grid_limits, **kwargs)
 
+    # Convert reflectivity back into logarithmic units and add a comment
+    # in the field dictionary explaining the method used.
+    if z_linear_interp:
+        ref_lin_grid = 10.0*(np.log10(grid.fields['reflectivity']['data']))
+        grid.fields['reflectivity']['data'] = ref_lin_grid
+        grid.fields['reflectivity'].update({
+            'comment': 'This reflectivity field was interpolated linearly and '
+                       'then converted to logarithmic units. Using linear '
+                       'units during interpolation allows for the retention '
+                       'of storm structure and gives a more realistic '
+                       'estimation of convection and more.'})
     return grid
