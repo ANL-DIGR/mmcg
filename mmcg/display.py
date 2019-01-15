@@ -4,10 +4,11 @@ import os
 from datetime import datetime
 import operator
 
-import netCDF4
-import numpy as np
+import cartopy.crs as ccrs
 import matplotlib
 import matplotlib.pyplot as plt
+import netCDF4
+import numpy as np
 import pyart
 
 from pyart.graph.common import (
@@ -122,7 +123,7 @@ def quicklooks(grid, config, image_directory=None,
     cat_dict = {}
     print('##')
     print('## Keys for each gate id are as follows:')
-    for pair_str in radar.fields['gate_id']['notes'].split(','):
+    for pair_str in grid.fields['gate_id']['notes'].split(','):
         print('##   ', str(pair_str))
         cat_dict.update({pair_str.split(':')[1]:int(pair_str.split(':')[0])})
     sorted_cats = sorted(cat_dict.items(), key=operator.itemgetter(1))
@@ -132,7 +133,7 @@ def quicklooks(grid, config, image_directory=None,
                   'snow': 'cyan',
                   'melting': 'yellow'}
     lab_colors = ['red', 'cyan', 'grey', 'green', 'yellow']
-    if 'xsapr_clutter' in radar.fields.keys():
+    if 'xsapr_clutter' in grid.fields.keys():
         cat_colors['clutter'] = 'black'
         lab_colors = np.append(lab_colors, 'black')
     lab_colors = [cat_colors[kitty[0]] for kitty in sorted_cats]
@@ -151,7 +152,7 @@ def quicklooks(grid, config, image_directory=None,
                     colors='k')
 
     cbax = plt.gca()
-    if 'xsapr_clutter' in radar.fields.keys():
+    if 'xsapr_clutter' in grid.fields.keys():
         tick_locs = np.linspace(
             0, len(sorted_cats) - 2, len(sorted_cats)) + 0.5
     else:
@@ -174,7 +175,7 @@ def quicklooks(grid, config, image_directory=None,
     display.plot_basemap(lon_lines=lol, lat_lines=lal)
     display.plot_grid('velocity_texture', level=level, vmin=0, vmax=14,
                       title=_generate_title(
-                         grid, 'velocity_texture', level),
+                          grid, 'velocity_texture', level),
                       cmap=pyart.graph.cm.NWSRef)
     if dd_lobes:
         plt.contour(grid_lon, grid_lat, bca, latlon='True',
@@ -191,25 +192,6 @@ def quicklooks(grid, config, image_directory=None,
     plt.savefig(
         image_directory
         + '/cmac_four_panel_plot' + combined_name + '.png')
-    plt.close()
-
-    # Creating a plot with reflectivity corrected with attenuation.
-    display = pyart.graph.GridMapDisplay(grid)
-    fig = plt.figure(figsize=[12, 8])
-    display.plot_basemap(lon_lines=lon, lat_lines=lal)
-    display.plot_grid('attenuation_corrected_reflectivity', level=level,
-                      vmin=0, vmax=60.,
-                      title=_generate_title(
-                          grid, 'attenuation_corrected_reflectivity',
-                          level),
-                      cmap=pyart.graph.cm_colorblind.HomeyerRainbow)
-    if dd_lobes:
-        plt.contour(grid_lon, grid_lat, bca,
-                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
-                    colors='k')
-    plt.savefig(
-        image_directory
-        + '/attenuation_corrected_reflectivity' + combined_name + '.png')
     plt.close()
 
     # Creating a plot of specific attenuation.
@@ -248,7 +230,7 @@ def quicklooks(grid, config, image_directory=None,
     display = pyart.graph.GridMapDisplay(grid)
     fig = plt.figure(figsize=[12, 8])
     display.plot_basemap(lon_lines=lol, lat_lines=lal)
-    display.plot_grid('corrected_specific_diff_phase', sweep=sweep,
+    display.plot_grid('corrected_specific_diff_phase', level=level,
                       vmin=0, vmax=6, title=_generate_title(
                           grid, 'corrected_specific_diff_phase',
                           level))
@@ -294,7 +276,7 @@ def quicklooks(grid, config, image_directory=None,
     # Creating a plot of filtered corrected differential phase.
     display = pyart.graph.GridMapDisplay(grid)
     fig = plt.figure(figsize=[12, 8])
-    display.plot_basemap(lon_lines=lon, lat_lines=lat)
+    display.plot_basemap(lon_lines=lol, lat_lines=lal)
     display.plot_grid('filtered_corrected_differential_phase', level=level,
                       title=_generate_title(
                           grid, 'filtered_corrected_differential_phase',
@@ -327,13 +309,64 @@ def quicklooks(grid, config, image_directory=None,
         + '/filtered_corrected_specific_diff_phase' + combined_name + '.png')
     plt.close()
 
+    # Creating a plot of specific differential attenuation.
+    display = pyart.graph.GridMapDisplay(grid)
+    fig = plt.figure(figsize=[12, 8])
+    display.plot_basemap(lon_lines=lol, lat_lines=lal)
+    display.plot_grid('specific_differential_attenuation', level=level,
+                      title=_generate_title(
+                          grid, 'specific_differential_attenuation',
+                          level))
+    if dd_lobes:
+        plt.contour(grid_lon, grid_lat, bca,
+                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                    colors='k')
+    plt.savefig(
+        image_directory
+        + '/specific_differential_attenuation' + combined_name + '.png')
+    plt.close()
+
+    # Creating a plot of path integrated differential attenuation.
+    display = pyart.graph.GridMapDisplay(grid)
+    fig = plt.figure(figsize=[12, 8])
+    display.plot_basemap(lon_lines=lol, lat_lines=lal)
+    display.plot_grid('path_integrated_differential_attenuation', level=level,
+                      title=_generate_title(
+                          grid, 'path_integrated_differential_attenuation',
+                          level))
+    if dd_lobes:
+        plt.contour(grid_lon, grid_lat, bca,
+                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                    colors='k')
+    plt.savefig(
+        image_directory
+        + '/path_integrated_differential_attenuation' + combined_name + '.png')
+    plt.close()
+
+    # Creating a plot of corrected differential reflectivity.
+    display = pyart.graph.GridMapDisplay(grid)
+    fig = plt.figure(figsize=[12, 8])
+    display.plot_basemap(lon_lines=lol, lat_lines=lal)
+    display.plot_grid('corrected_differential_reflectivity', level=level,
+                      title=_generate_title(
+                          grid, 'corrected_differential_reflectivity',
+                          level))
+    if dd_lobes:
+        plt.contour(grid_lon, grid_lat, bca,
+                    levels=[np.pi/6, 5*np.pi/6], linewidths=2,
+                    colors='k')
+    plt.savefig(
+        image_directory
+        + '/corrected_differential_reflectivity' + combined_name + '.png')
+    plt.close()
+
 
 def _generate_title(grid, field, level):
     """ Generates a title for each plot. """
     time_str = generate_grid_time_begin(grid).isoformat() + 'Z'
     height = grid.z['data'][level] / 1000.
-    l1 = "%s %.1f km %s " % (generate_grid_name(grid), height,
-                             time_str)
+    line_one = "%s %.1f km %s " % (generate_grid_name(grid), height,
+                                   time_str)
     field_name = str(field)
     field_name = field_name.replace('_', ' ')
     field_name = field_name[0].upper() + field_name[1:]
