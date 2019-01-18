@@ -25,9 +25,9 @@ def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
     Other Parameters
     ----------------
     z_linear_interp : bool
-        Whether or not to map the reflectivity in linear or logarithmic
-        units. Default is True, reflectivity is map in linear units and
-        then converted to logarithmic units after mapping has taken place.
+        Whether or not to map fields in origin dBZ units in linear or
+        logarithmic units. Default is True, fields are mapped in linear units
+        and then converted to logarithmic units after mapping has taken place.
     config : str
         A string pointing to dictionaries containing values for gridding.
         These dictionaries tend to have value for grid_shape and grid_limits,
@@ -50,7 +50,15 @@ def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
     # that will be used in mapping.
     if z_linear_interp:
         z_lin = 10.0**(radar.fields['reflectivity']['data']/10.0)
-        radar.add_field('reflectivity', z_lin, replace_existing=True)
+        total_pow = 10.0**(radar.fields['total_power']['data']/10.0)
+        corr_z = 10.0**(radar.fields['corrected_reflectivity']['data']/10.0)
+        radar.add_field_like(
+            'reflectivity', 'reflectivity', z_lin, replace_existing=True)
+        radar.add_field_like(
+            'total_power', 'total_power', total_pow, replace_existing=True)
+        radar.add_field_like(
+            'corrected_reflectivity', 'corrected_reflectivity',
+            corr_z, replace_existing=True)
 
     # Retrieve values from the configuration file.
     if config is not None:
@@ -58,20 +66,71 @@ def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
 
         grid = pyart.map.grid_from_radars(
             radar, grid_shape, grid_limits, **grid_config)
+        if 'gate_id' in fields.keys():
+            if 'fields' in grid_config:
+                grid_config.pop('fields')
+            if 'weighting_function' in grid_config:
+                grid_config.pop('weighting_function')
+            grid_id = pyart.map.grid_from_radars(
+                radar, grid_shape, grid_limits, fields=['gate_id'],
+                weighting_function='NEAREST', **grid_config)
+            gate_data = grid_id.fields['gate_id']['data']
+            grid.fields['gate_id']['data'] = gate_data
+            grid.fields['gate_id'].update({
+                'comment', 'This gate id field has been mapped to a '
+                           'Cartesian grid using nearest neighbor. This '
+                           'may differ from the mapping method used '
+                           'in the other fields'})
+            del grid_id
 
     else:
         grid = pyart.map.grid_from_radars(
             radar, grid_shape, grid_limits, **kwargs)
+        if 'gate_id' in fields.keys():
+            if 'fields' in kwargs:
+                kwargs.pop('fields')
+            if 'weighting_function' in kwargs:
+                kwargs.pop('weighting_function')
+            grid_id = pyart.map.grid_from_radars(
+                radar, grid_shape, grid_limits, fields=['gate_id'],
+                weighting_function='NEAREST', **kwargs)
+            gate_data = grid_id.fields['gate_id']['data']
+            grid.fields['gate_id']['data'] = gate_data
+            grid.fields['gate_id'].update({
+                'comment', 'This gate id field has been mapped to a '
+                           'Cartesian grid using nearest neighbor. This '
+                           'may differ from the mapping method used '
+                           'in the other fields'})
+            del grid_id
 
     # Convert reflectivity back into logarithmic units and add a comment
     # in the field dictionary explaining the method used.
     if z_linear_interp:
-        ref_lin_grid = 10.0*(np.log10(grid.fields['reflectivity']['data']))
-        grid.fields['reflectivity']['data'] = ref_lin_grid
+        ref_log_grid = 10.0*(np.log10(grid.fields['reflectivity']['data']))
+        grid.fields['reflectivity']['data'] = ref_log_grid
         grid.fields['reflectivity'].update({
             'comment': 'This reflectivity field was interpolated linearly and '
                        'then converted to logarithmic units. Using linear '
                        'units during interpolation allows for the retention '
                        'of storm structure and gives a more realistic '
                        'estimation of convection and more.'})
+
+        tot_log_grid = 10.0*(np.log10(grid.fields['total_power']['data']))
+        grid.fields['total_power']['data'] = tot_log_grid
+        grid.fields['total_power'].update({
+            'comment': 'This total power field was interpolated linearly and '
+                       'then converted to logarithmic units. Using linear '
+                       'units during interpolation allows for the retention '
+                       'of storm structure and gives a more realistic '
+                       'estimation of convection and more.'})
+
+        corr_z_log_grid = 10.0*(
+            np.log10(grid.fields['corrected_reflectivity']['data']))
+        grid.fields['corrected_reflectivity']['data'] = corr_z_log_grid
+        grid.fields['corrected_reflectivity'].update({
+            'comment': 'This corrected_reflectivity field was interpolated '
+                       'linearly and then converted to logarithmic units. '
+                       'Using linear units during interpolation allows for '
+                       'the retention of storm structure and gives a more '
+                       'realistic estimation of convection and more.'})
     return grid
