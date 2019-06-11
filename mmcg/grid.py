@@ -66,7 +66,7 @@ def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
 
         grid = pyart.map.grid_from_radars(
             radar, grid_shape, grid_limits, **grid_config)
-        if 'gate_id' in fields.keys():
+        if 'gate_id' in radar.fields.keys():
             if 'fields' in grid_config:
                 grid_config.pop('fields')
             if 'weighting_function' in grid_config:
@@ -86,7 +86,7 @@ def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
     else:
         grid = pyart.map.grid_from_radars(
             radar, grid_shape, grid_limits, **kwargs)
-        if 'gate_id' in fields.keys():
+        if 'gate_id' in radar.fields.keys():
             if 'fields' in kwargs:
                 kwargs.pop('fields')
             if 'weighting_function' in kwargs:
