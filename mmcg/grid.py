@@ -77,7 +77,7 @@ def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
             gate_data = grid_id.fields['gate_id']['data']
             grid.fields['gate_id']['data'] = gate_data
             grid.fields['gate_id'].update({
-                'comment', 'This gate id field has been mapped to a '
+                'comment': 'This gate id field has been mapped to a '
                            'Cartesian grid using nearest neighbor. This '
                            'may differ from the mapping method used '
                            'in the other fields'})
@@ -97,7 +97,7 @@ def mmcg(radar, grid_shape, grid_limits, z_linear_interp=True,
             gate_data = grid_id.fields['gate_id']['data']
             grid.fields['gate_id']['data'] = gate_data
             grid.fields['gate_id'].update({
-                'comment', 'This gate id field has been mapped to a '
+                'comment': 'This gate id field has been mapped to a '
                            'Cartesian grid using nearest neighbor. This '
                            'may differ from the mapping method used '
                            'in the other fields'})
